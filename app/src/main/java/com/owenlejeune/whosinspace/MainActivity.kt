@@ -16,20 +16,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
+import com.kieronquinn.monetcompat.app.MonetCompatActivity
 import com.owenlejeune.whosinspace.model.Astronaut
 import com.owenlejeune.whosinspace.ui.theme.WhosInSpaceTheme
 import com.owenlejeune.whosinspace.webcrawler.AstroCrawler
 
-class MainActivity : ComponentActivity() {
+class MainActivity : MonetCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            WhosInSpaceTheme {
-                // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colors.background
-                ) {
+        lifecycleScope.launchWhenCreated {
+            monet.awaitMonetReady()
+            setContent {
+                WhosInSpaceTheme(monetCompat = monet) {
                     Column {
                         val astronautData = remember { mutableStateOf<List<Astronaut>?>(null) }
                         if (astronautData.value == null) {
@@ -51,18 +50,5 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String) {
-    Text(text = "Hello $name!")
-}
-
-@Preview(showBackground = true)
-@Composable
-fun DefaultPreview() {
-    WhosInSpaceTheme {
-        Greeting("Android")
     }
 }
