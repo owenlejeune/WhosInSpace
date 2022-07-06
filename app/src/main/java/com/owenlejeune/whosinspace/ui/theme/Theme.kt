@@ -7,6 +7,8 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.kieronquinn.monetcompat.core.MonetCompat
+import com.owenlejeune.whosinspace.preferences.AppPreferences
+import org.koin.java.KoinJavaComponent.get
 
 private val LightColors = lightColorScheme(
     primary = md_theme_light_primary,
@@ -73,14 +75,21 @@ private val DarkColors = darkColorScheme(
 fun WhosInSpaceTheme(
     monetCompat: MonetCompat,
     darkTheme: Boolean = isSystemInDarkTheme(),
+    preferences: AppPreferences = get(AppPreferences::class.java),
     content: @Composable () -> Unit
 ) {
     val colors = if (darkTheme) {
-//        monetCompat.darkMonetCompatScheme()
-        DarkColors
+        if (preferences.useMonetColors) {
+            monetCompat.darkMonetCompatScheme()
+        } else {
+            DarkColors
+        }
     } else {
-//        monetCompat.lightMonetCompatScheme()
-        LightColors
+        if (preferences.useMonetColors) {
+            monetCompat.lightMonetCompatScheme()
+        } else {
+            LightColors
+        }
     }
 
     androidx.compose.material3.MaterialTheme(
