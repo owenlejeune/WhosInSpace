@@ -2,6 +2,7 @@ package com.owenlejeune.whosinspace.model
 
 class Astronaut private constructor(
     val name: String,
+    val craft: String,
     val profileImageUrl: String,
     val birthday: String?,
     val flagImageUrl: String,
@@ -18,6 +19,7 @@ class Astronaut private constructor(
 
     class Builder {
         var name = ""
+        var craft = ""
         var profileImageUrl = ""
         var birthday: String? = null
         var flagImageUrl = ""
@@ -29,7 +31,7 @@ class Astronaut private constructor(
 
         fun build(): Astronaut {
             return Astronaut(
-                name, profileImageUrl, birthday, flagImageUrl, gender,
+                name, craft, profileImageUrl, birthday, flagImageUrl, gender,
                 occupationOrRank, numberOfMissions, daysInSpace, profileExcerpt
             )
         }
@@ -37,7 +39,7 @@ class Astronaut private constructor(
 
     override fun toString(): String {
         return listOf(
-            name, profileImageUrl, birthday, flagImageUrl, gender,
+            name, craft, profileImageUrl, birthday, flagImageUrl, gender,
             occupationOrRank, numberOfMissions, dayInSpace, profileImageUrl,
             profileExcerpt
         ).joinToString(separator = "\n") { "$it" }

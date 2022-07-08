@@ -8,7 +8,7 @@ class AstronautsResponse(
 ) {
 
     class Person(
-        @SerializedName("name") val name: String,
+        @SerializedName("name") var name: String,
         @SerializedName("craft") val craft: String
     )
 

@@ -23,6 +23,8 @@ class WISApplication: Application() {
                 preferencesModule
             )
         }
+
+        MonetCompat.enablePaletteCompat()
     }
 
 }

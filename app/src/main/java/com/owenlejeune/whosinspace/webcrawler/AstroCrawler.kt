@@ -1,5 +1,6 @@
 package com.owenlejeune.whosinspace.webcrawler
 
+import com.owenlejeune.whosinspace.api.model.AstronautsResponse
 import com.owenlejeune.whosinspace.api.model.OpenNotifyService
 import com.owenlejeune.whosinspace.extensions.awaitAll
 import com.owenlejeune.whosinspace.model.Astronaut
@@ -20,26 +21,26 @@ class AstroCrawler {
 
     fun scrapeAstroData(onResponse: (List<Astronaut>) -> Unit) {
         CoroutineScope(Dispatchers.IO).launch {
-            val names = getNamesOfAstronautsInSpace()
+            val openNotifyAstronauts = getNamesOfAstronautsInSpace()
             val astronauts = emptyList<Astronaut>().toMutableList()
 
             awaitAll (
-                names.map { name -> launch { astronauts.add(scrapeDataFromWebpage(name, this)) } }
+                openNotifyAstronauts.map { astronaut -> launch { astronauts.add(scrapeDataFromWebpage(astronaut, this)) } }
             )
 
             withContext(Dispatchers.Main) {
-                onResponse(astronauts)
+                onResponse(astronauts.sortedBy { it.name })
             }
         }
     }
 
-    private suspend fun getNamesOfAstronautsInSpace(): List<String> {
+    private suspend fun getNamesOfAstronautsInSpace(): List<AstronautsResponse.Person> {
         val astroResponse = openNotifyService.getAstronautsInSpace()
         if (astroResponse.isSuccessful) {
-            val names = astroResponse.body()?.people?.map { it.name }?.toMutableList() ?: emptyList<String>().toMutableList()
+            val names = astroResponse.body()?.people ?: emptyList<AstronautsResponse.Person>().toMutableList()
             names.forEachIndexed { index, s ->
-                if (fixedAstroNames.containsKey(s)) {
-                    names[index] = fixedAstroNames[s]!!
+                if (fixedAstroNames.containsKey(s.name)) {
+                    names[index].name = fixedAstroNames[s.name]!!
                 }
             }
             return names
@@ -47,21 +48,14 @@ class AstroCrawler {
         return emptyList()
     }
 
-    private suspend fun scrapeDataFromWebpage(name: String, scope: CoroutineScope): Astronaut {
+    private suspend fun scrapeDataFromWebpage(astronaut: AstronautsResponse.Person, scope: CoroutineScope): Astronaut {
         val doc = Jsoup
-            .connect("https://www.supercluster.com/astronauts/${name.replace(" ", "-").lowercase()}")
+            .connect("https://www.supercluster.com/astronauts/${astronaut.name.replace(" ", "-").lowercase()}")
             .get()
 
-        var profileUrl = ""
-        var birthday: String? = null
-        var flag = ""
-        var gender = ""
-        var or = ""
-        var numMissions = 0
-        var numDays = 0
-        var excerpt = ""
-
         val builder = Astronaut.Builder()
+        builder.name = astronaut.name
+        builder.craft = astronaut.craft
 
         awaitAll (
             scope.launch { builder.profileImageUrl = getAstronautProfileImage(doc) },
@@ -153,10 +147,11 @@ class AstroCrawler {
     }
 
     private fun getExcerpt(document: Document): String {
-        return document
+        val text = document
             .select("div.px1.py2.container--xl.mxa")
             .select("div.h4")
             .text()
+        return text.substring(0, text.length-7)
     }
 
 //    private fun getAstronautName(doc: Document): String {

@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Who\'s In Space</string>
+
+    <string name="number_of_missions">"Number of missions: %1$d"</string>
+    <string name="days_in_space">"Total days in space: %1$d"</string>
+    <string name="people_in_space_label">"People in space"</string>
 </resources>
