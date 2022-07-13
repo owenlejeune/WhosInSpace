@@ -289,19 +289,7 @@ class MainActivity : MonetCompatActivity() {
                 Row(
                     modifier = Modifier.clip(RoundedCornerShape(20.dp))
                 ) {
-                    val profileImageSize = if (!expanded) {
-                        DpSize(width = 80.dp, height = 100.dp)
-                    } else {
-                        DpSize(width = 160.dp, height = 200.dp)
-                    }
-
-                    AsyncImage(
-                        model = astronaut.profileImageUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(profileImageSize),
-                        contentScale = ContentScale.Crop
-                    )
+                    val profileImageSize = AstronautProfileImage(astronaut = astronaut, isExpanded = expanded)
 
                     Box(
                         modifier = Modifier
@@ -357,13 +345,12 @@ class MainActivity : MonetCompatActivity() {
                                 )
                             }
                         }
-
-                        var flagImgSize = DpSize(width = 40.dp, height = 27.dp)
+                        
                         AsyncImage(
                             model = astronaut.flagImageUrl,
                             contentDescription = null,
                             modifier = Modifier
-                                .size(size = flagImgSize)
+                                .size(size = DpSize(width = 40.dp, height = 27.dp))
                                 .align(Alignment.TopEnd),
                             contentScale = ContentScale.FillWidth
                         )
@@ -377,31 +364,10 @@ class MainActivity : MonetCompatActivity() {
                         modifier = Modifier.padding(all = 12.dp)
                     )
                     
-                    Row(
-                        modifier = Modifier
-                            .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
-                            .semantics(mergeDescendants = true) {}
-                            .clickable {
-                                val urlName = astronaut.name
-                                    .replace(" ", "-")
-                                    .lowercase()
-                                val intent = Intent(Intent.ACTION_VIEW)
-                                intent.data =
-                                    Uri.parse("https://www.supercluster.com/astronauts/$urlName")
-                                startActivity(intent)
-                            }
-                    ) {
-                        Text(
-                            text = "Read more",
-                            color = MaterialTheme.colorScheme.tertiary,
-                            style = TextStyle(textDecoration = TextDecoration.Underline)
-                        )
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_arrow_outward),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.tertiary
-                        )
-                    }
+                    ReadMoreView(
+                        astronaut = astronaut,
+                        modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+                    )
                 }
             }
         }
@@ -415,7 +381,8 @@ class MainActivity : MonetCompatActivity() {
         Card(
             modifier = modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(20.dp)),
+            backgroundColor = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant,
         ) {
             Box(
                 modifier = Modifier.fillMaxSize()
@@ -423,17 +390,11 @@ class MainActivity : MonetCompatActivity() {
                 Row(
                     modifier = Modifier.clip(RoundedCornerShape(20.dp))
                 ) {
-                    AsyncImage(
-                        model = astronaut.profileImageUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(DpSize(width = 160.dp, height = 200.dp)),
-                        contentScale = ContentScale.Crop
-                    )
+                    val profileImageSize = AstronautProfileImage(astronaut = astronaut, isExpanded = true)
 
                     Column(
                         modifier = Modifier
-                            .height(height = 200.dp)
+                            .height(height = profileImageSize.height)
                             .padding(all = 12.dp)
                     ) {
                         Row(
@@ -483,39 +444,20 @@ class MainActivity : MonetCompatActivity() {
                         Spacer(modifier = Modifier.weight(1f))
 
                         Column (
-                            modifier = Modifier.verticalScroll(rememberScrollState())
+                            modifier = Modifier
+                                .verticalScroll(rememberScrollState())
+                                .padding(top = 12.dp)
                         ) {
                             Text(
                                 text = astronaut.profileExcerpt,
-                                color = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.padding(top = 12.dp)
+                                color = MaterialTheme.colorScheme.secondary
                             )
 
-                            Row(
+                            ReadMoreView(
+                                astronaut = astronaut,
                                 modifier = Modifier
-                                    .padding(top = 8.dp)
-                                    .semantics(mergeDescendants = true) {}
-                                    .clickable {
-                                        val urlName = astronaut.name
-                                            .replace(" ", "-")
-                                            .lowercase()
-                                        val intent = Intent(Intent.ACTION_VIEW)
-                                        intent.data =
-                                            Uri.parse("https://www.supercluster.com/astronauts/$urlName")
-                                        startActivity(intent)
-                                    }
-                            ) {
-                                Text(
-                                    text = "Read more",
-                                    color = MaterialTheme.colorScheme.tertiary,
-                                    style = TextStyle(textDecoration = TextDecoration.Underline)
-                                )
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_arrow_outward),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.tertiary
-                                )
-                            }
+                                    .padding(end = 12.dp, bottom = 12.dp)
+                            )
                         }
                     }
                 }
@@ -529,6 +471,59 @@ class MainActivity : MonetCompatActivity() {
                     contentScale = ContentScale.FillBounds
                 )
             }
+        }
+    }
+    
+    @Composable
+    private fun AstronautProfileImage(
+        astronaut: Astronaut,
+        isExpanded: Boolean
+    ): DpSize {
+        val profileImageSize = if (!isExpanded) {
+            DpSize(width = 80.dp, height = 100.dp)
+        } else {
+            DpSize(width = 160.dp, height = 200.dp)
+        }
+
+        AsyncImage(
+            model = astronaut.profileImageUrl,
+            contentDescription = null,
+            modifier = Modifier
+                .size(profileImageSize),
+            contentScale = ContentScale.Crop
+        )
+        
+        return profileImageSize
+    }
+    
+    @Composable
+    private fun ReadMoreView(
+        astronaut: Astronaut,
+        modifier: Modifier = Modifier
+    ) {
+        Row(
+            modifier = modifier
+                .semantics(mergeDescendants = true) {}
+                .clickable {
+                    val urlName = astronaut.name
+                        .replace(" ", "-")
+                        .lowercase()
+                    val intent = Intent(Intent.ACTION_VIEW)
+                    intent.data =
+                        Uri.parse("https://www.supercluster.com/astronauts/$urlName")
+                    startActivity(intent)
+                }
+        ) {
+            Text(
+                text = stringResource(R.string.read_more_text),
+                color = MaterialTheme.colorScheme.tertiary,
+                style = TextStyle(textDecoration = TextDecoration.Underline)
+            )
+            Icon(
+                painter = painterResource(id = R.drawable.ic_arrow_outward),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.tertiary
+            )
         }
     }
 }
