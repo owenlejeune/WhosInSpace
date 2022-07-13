@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.CustomSplashScreenTheme" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#FEFBFF</item>
+        <item name="windowSplashScreenAnimationDuration">300</item>
+        <item name="splashScreenIconSize">200dp</item>
+        <item name="postSplashScreenTheme">@style/Theme.WhosInSpace</item>
+    </style>
+</resources>

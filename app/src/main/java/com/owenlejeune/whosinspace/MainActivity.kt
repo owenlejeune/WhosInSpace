@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import coil.compose.AsyncImage
 import com.google.gson.Gson
@@ -48,6 +49,27 @@ class MainActivity : MonetCompatActivity() {
         super.onCreate(savedInstanceState)
         lifecycleScope.launchWhenCreated {
             monet.awaitMonetReady()
+
+            val astronautList = mutableStateOf<List<Astronaut>?>(null)
+            if (shouldCrawlForData()) {
+                AstroCrawler().scrapeAstroData { astronauts ->
+                    astronautList.value = astronauts
+                    preferences.testJson = Gson().toJson(astronautList.value)
+                }
+            } else {
+                val testJson = preferences.testJson
+                val listOfAstronauts = object : TypeToken<ArrayList<Astronaut>>() {}.type
+                astronautList.value = Gson().fromJson(testJson, listOfAstronauts)
+            }
+
+            installSplashScreen().apply {
+                setKeepOnScreenCondition {
+                    astronautList.value == null
+                }
+            }
+
+            actionBar?.hide()
+
             setContent {
                 WhosInSpaceTheme(monetCompat = monet) {
                     val windowSizeClass = rememberWindowSizeClass()
@@ -67,30 +89,7 @@ class MainActivity : MonetCompatActivity() {
                                 .padding(bottom = bottomPadding)
                         )
 
-                        val astronautData = remember { mutableStateOf<List<Astronaut>?>(null) }
-
-                        val crawlForAstronauts = {
-                            if (astronautData.value == null) {
-                                AstroCrawler().scrapeAstroData { astronauts ->
-                                    astronautData.value = astronauts
-                                    preferences.testJson = Gson().toJson(astronautData.value)
-                                }
-                            }
-                        }
-
-                        if (astronautData.value == null) {
-                            if (preferences.useTestJson) {
-                                val testJson = preferences.testJson
-                                if (testJson.isEmpty()) {
-                                    crawlForAstronauts()
-                                } else {
-                                    val listOfAstronauts = object : TypeToken<ArrayList<Astronaut>>() {}.type
-                                    astronautData.value = Gson().fromJson(testJson, listOfAstronauts)
-                                }
-                            } else {
-                                crawlForAstronauts()
-                            }
-                        }
+                        val astronautData = remember { astronautList }
 
                         if (windowSizeClass == WindowSizeClass.Expanded) {
                             DualColumnView(
@@ -105,6 +104,10 @@ class MainActivity : MonetCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun shouldCrawlForData(): Boolean {
+        return !preferences.useTestJson || preferences.testJson.isEmpty()
     }
 
     @Composable
