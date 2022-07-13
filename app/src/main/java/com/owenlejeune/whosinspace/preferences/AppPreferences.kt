@@ -18,7 +18,7 @@ class AppPreferences(context: Context) {
         get() = preferences.getBoolean(USE_MONET_COLORS_KEY, false)
         set(value) { preferences.put(USE_MONET_COLORS_KEY, value) }
 
-    val useTestJson = true
+    val useTestJson = false
     var testJson: String
         get() = preferences.getString(TEST_JSON_KEY, "") ?: ""
         set(value) { preferences.put(TEST_JSON_KEY, value) }

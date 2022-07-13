@@ -1,21 +1,22 @@
 package com.owenlejeune.whosinspace
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Card
-import androidx.compose.material.Icon
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -30,6 +31,9 @@ import coil.compose.AsyncImage
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kieronquinn.monetcompat.app.MonetCompatActivity
+import com.owenlejeune.whosinspace.extensions.WindowSizeClass
+import com.owenlejeune.whosinspace.extensions.getOrientation
+import com.owenlejeune.whosinspace.extensions.rememberWindowSizeClass
 import com.owenlejeune.whosinspace.model.Astronaut
 import com.owenlejeune.whosinspace.preferences.AppPreferences
 import com.owenlejeune.whosinspace.ui.theme.WhosInSpaceTheme
@@ -46,18 +50,21 @@ class MainActivity : MonetCompatActivity() {
             monet.awaitMonetReady()
             setContent {
                 WhosInSpaceTheme(monetCompat = monet) {
+                    val windowSizeClass = rememberWindowSizeClass()
+
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(color = MaterialTheme.colorScheme.background)
                     ) {
+                        val bottomPadding = if (windowSizeClass == WindowSizeClass.Expanded) 0.dp else 12.dp
                         Image(
                             painter = painterResource(id = R.drawable.space_background_2),
                             contentDescription = null,
-                            contentScale = ContentScale.FillHeight,
+                            contentScale = ContentScale.FillBounds,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(bottom = 12.dp)
+                                .padding(bottom = bottomPadding)
                         )
 
                         val astronautData = remember { mutableStateOf<List<Astronaut>?>(null) }
@@ -85,38 +92,142 @@ class MainActivity : MonetCompatActivity() {
                             }
                         }
 
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState()),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            MainNumberCard(
-                                number = astronautData.value?.size,
-                                modifier = Modifier.padding(top = 50.dp, bottom = 50.dp)
+                        if (windowSizeClass == WindowSizeClass.Expanded) {
+                            DualColumnView(
+                                astronautData = astronautData.value
                             )
-
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
-                                    .background(color = MaterialTheme.colorScheme.background)
-                                    .fillMaxSize()
-                            ) {
-                                Column(modifier = Modifier
-                                    .background(color = MaterialTheme.colorScheme.background)
-                                    .padding(all = 24.dp),
-                                    verticalArrangement = Arrangement.spacedBy(24.dp)
-                                ) {
-                                    astronautData.value?.forEach { astronaut ->
-                                        AstronautCard(
-                                            astronaut = astronaut
-                                        )
-                                    }
-                                }
-                            }
+                        } else {
+                            SingleColumnView(
+                                astronautData = astronautData.value
+                            )
                         }
-
                     }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun SingleColumnView(
+        astronautData: List<Astronaut>?,
+        useLargeCards: Boolean = false
+    ) {
+        val scrollableModifier = if (astronautData == null) {
+            Modifier
+        } else {
+            Modifier.verticalScroll(rememberScrollState())
+        }
+
+        Column(
+            modifier = scrollableModifier
+                .fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            MainNumberCard(
+                number = astronautData?.size,
+                modifier = Modifier.padding(top = 50.dp, bottom = 50.dp)
+            )
+
+            Column(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
+                    .background(color = MaterialTheme.colorScheme.background)
+                    .fillMaxSize()
+                    .padding(all = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                if (astronautData == null) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .align(Alignment.CenterHorizontally)
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                } else {
+                    astronautData.forEach { astronaut ->
+                        if (useLargeCards) {
+                            LargeAstronautCard(astronaut = astronaut)
+                        } else {
+                            AstronautCard(astronaut = astronaut)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun DualColumnView(
+        astronautData: List<Astronaut>?
+    ) {
+        if (getOrientation() == Configuration.ORIENTATION_PORTRAIT) {
+            SingleColumnView(
+                astronautData = astronautData,
+                useLargeCards = true
+            )
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                DualPaneNumberCard(
+                    modifier = Modifier
+                        .weight(.6f)
+                        .fillMaxHeight(),
+                    number = astronautData?.size
+                )
+
+                DualPaneAstronautColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    astronautData = astronautData
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun DualPaneNumberCard(
+        modifier: Modifier,
+        number: Int?
+    ) {
+        Box(
+            modifier = modifier
+        ) {
+            MainNumberCard(
+                modifier = Modifier.align(Alignment.Center),
+                number = number
+            )
+        }
+    }
+
+    @Composable
+    private fun DualPaneAstronautColumn(
+        modifier: Modifier,
+        astronautData: List<Astronaut>?
+    ) {
+        Column(
+            modifier = modifier
+                .verticalScroll(rememberScrollState())
+                .background(color = MaterialTheme.colorScheme.background)
+                .padding(all = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            if (astronautData == null) {
+                Spacer(modifier = Modifier.weight(1f))
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .align(Alignment.CenterHorizontally)
+                )
+                Spacer(modifier = Modifier.weight(1f))
+            } else {
+                astronautData.forEach { astronaut ->
+                    LargeAstronautCard(
+                        astronaut = astronaut
+                    )
                 }
             }
         }
@@ -163,14 +274,14 @@ class MainActivity : MonetCompatActivity() {
 
         Card(
             modifier = modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
                 .toggleable(
                     value = expanded,
                     onValueChange = {
                         expanded = it
                     }
-                ),
+                )
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp)),
             backgroundColor = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant,
             shape = RoundedCornerShape(20.dp)
         ) {
@@ -196,50 +307,63 @@ class MainActivity : MonetCompatActivity() {
                         modifier = Modifier
                             .height(profileImageSize.height)
                             .fillMaxWidth()
-                            .padding(all = 12.dp)
                     ) {
-                        Column {
-                            Text(
-                                text = astronaut.name,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = astronaut.craft,
-                                color = MaterialTheme.colorScheme.secondary,
-                                fontSize = 14.sp
-                            )
-                            if (expanded) {
+                        Box(
+                            modifier = Modifier
+                                .height(profileImageSize.height)
+                                .fillMaxWidth()
+                                .padding(all = 12.dp)
+                        ) {
+                            Column {
                                 Text(
-                                    text = astronaut.occupationOrRank?.title ?: "",
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    fontSize = 12.sp,
-                                    modifier = Modifier.widthIn(max = 100.dp)
+                                    text = astronaut.name,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
-                            }
-
-                            Spacer(modifier = Modifier.weight(1f))
-
-
-                            if (expanded) {
                                 Text(
-                                    text = stringResource(id = R.string.number_of_missions, astronaut.numberOfMissions),
+                                    text = astronaut.craft,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    fontSize = 14.sp
+                                )
+                                if (expanded) {
+                                    Text(
+                                        text = astronaut.occupationOrRank?.title ?: "",
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontSize = 12.sp,
+                                        modifier = Modifier.widthIn(max = 100.dp)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.weight(1f))
+
+
+                                if (expanded) {
+                                    Text(
+                                        text = stringResource(
+                                            id = R.string.number_of_missions,
+                                            astronaut.numberOfMissions
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontSize = 14.sp
+                                    )
+                                }
+
+                                Text(
+                                    text = stringResource(
+                                        id = R.string.days_in_space,
+                                        astronaut.dayInSpace
+                                    ),
                                     color = MaterialTheme.colorScheme.onSurface,
                                     fontSize = 14.sp
                                 )
                             }
-
-                            Text(
-                                text = stringResource(id = R.string.days_in_space, astronaut.dayInSpace),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontSize = 14.sp
-                            )
                         }
 
+                        var flagImgSize = DpSize(width = 40.dp, height = 27.dp)
                         AsyncImage(
                             model = astronaut.flagImageUrl,
                             contentDescription = null,
                             modifier = Modifier
-                                .size(width = 40.dp, height = 27.dp)
+                                .size(size = flagImgSize)
                                 .align(Alignment.TopEnd),
                             contentScale = ContentScale.FillWidth
                         )
@@ -279,6 +403,131 @@ class MainActivity : MonetCompatActivity() {
                         )
                     }
                 }
+            }
+        }
+    }
+
+    @Composable
+    private fun LargeAstronautCard(
+        astronaut: Astronaut,
+        modifier: Modifier = Modifier
+    ) {
+        Card(
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Row(
+                    modifier = Modifier.clip(RoundedCornerShape(20.dp))
+                ) {
+                    AsyncImage(
+                        model = astronaut.profileImageUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(DpSize(width = 160.dp, height = 200.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+
+                    Column(
+                        modifier = Modifier
+                            .height(height = 200.dp)
+                            .padding(all = 12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        ) {
+                            Column {
+                                Text(
+                                    text = astronaut.name,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    fontSize = 20.sp
+                                )
+                                Text(
+                                    text = astronaut.craft,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    fontSize = 14.sp
+                                )
+                            }
+
+                            Column(
+                                modifier = Modifier.padding(start = 12.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(
+                                        id = R.string.number_of_missions,
+                                        astronaut.numberOfMissions
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontSize = 14.sp
+                                )
+                                Text(
+                                    text = stringResource(
+                                        id = R.string.days_in_space,
+                                        astronaut.dayInSpace
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = astronaut.occupationOrRank?.title ?: "",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 14.sp
+                        )
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        Column (
+                            modifier = Modifier.verticalScroll(rememberScrollState())
+                        ) {
+                            Text(
+                                text = astronaut.profileExcerpt,
+                                color = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.padding(top = 12.dp)
+                            )
+
+                            Row(
+                                modifier = Modifier
+                                    .padding(top = 8.dp)
+                                    .semantics(mergeDescendants = true) {}
+                                    .clickable {
+                                        val urlName = astronaut.name
+                                            .replace(" ", "-")
+                                            .lowercase()
+                                        val intent = Intent(Intent.ACTION_VIEW)
+                                        intent.data =
+                                            Uri.parse("https://www.supercluster.com/astronauts/$urlName")
+                                        startActivity(intent)
+                                    }
+                            ) {
+                                Text(
+                                    text = "Read more",
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    style = TextStyle(textDecoration = TextDecoration.Underline)
+                                )
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_arrow_outward),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
+                        }
+                    }
+                }
+
+                AsyncImage(
+                    model = astronaut.flagImageUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(size = DpSize(width = 120.dp, height = 81.dp))
+                        .align(Alignment.TopEnd),
+                    contentScale = ContentScale.FillBounds
+                )
             }
         }
     }
