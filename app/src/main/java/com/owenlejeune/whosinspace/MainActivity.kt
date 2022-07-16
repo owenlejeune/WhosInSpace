@@ -6,7 +6,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.DisplayMetrics
-import android.util.Log
 import android.view.WindowInsets
 import android.widget.Toast
 import androidx.activity.compose.setContent
@@ -81,7 +80,7 @@ class MainActivity : MonetCompatActivity() {
 
             getPhotoOfTheDay { response ->
                 backdropImageModel.value = if (response == PhotoOfTheDayResponse.NonResponse || response.mediaType != PhotoOfTheDayResponse.PhotoMediaType.IMAGE) {
-                    R.drawable.space_background_2
+                    R.drawable.space_background
                 } else {
                     response.hdUrl
                 }
