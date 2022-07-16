@@ -19,6 +19,9 @@ class AppPreferences(context: Context) {
         get() = preferences.getBoolean(USE_MONET_COLORS_KEY, false)
         set(value) { preferences.put(USE_MONET_COLORS_KEY, value) }
 
+    // Testing Preferences -- NOT EXPOSED TO USER
+
+    val showAds = true
     val testOffline = false
     val useTestJson = BuildConfig.DEBUG && !testOffline
     var testJson: String

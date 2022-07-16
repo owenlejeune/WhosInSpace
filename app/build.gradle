@@ -6,6 +6,10 @@ plugins {
 
 def composeVersion = "1.2.0-beta03"
 
+def localPropertiesFile = rootProject.file("local.properties")
+def localProperties = new Properties()
+localProperties.load(new FileInputStream(localPropertiesFile))
+
 android {
     compileSdk 32
 
@@ -20,6 +24,12 @@ android {
         vectorDrawables {
             useSupportLibrary true
         }
+
+        buildConfigField "String", "AdMobId", localProperties['WhosInSpace_AdMob_App_Id']
+        buildConfigField "String", "BannerAdUnitId", localProperties['WhosInSpace_Banner_Ad_Unit_Id']
+
+        resValue "string", "ad_mob_id", localProperties['WhosInSpace_AdMob_App_Id']
+        resValue "string", "banner_ad_unit_id", localProperties['WhosInSpace_Banner_Ad_Unit_Id']
     }
 
     buildTypes {
@@ -83,6 +93,8 @@ dependencies {
     implementation "io.coil-kt:coil-compose:2.1.0"
 
     implementation 'androidx.core:core-splashscreen:1.0.0-rc01'
+
+    implementation 'com.google.android.gms:play-services-ads:21.1.0'
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'

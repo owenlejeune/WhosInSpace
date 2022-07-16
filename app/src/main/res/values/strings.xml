@@ -4,6 +4,6 @@
     <string name="number_of_missions">"Number of missions: %1$d"</string>
     <string name="days_in_space">"Total days in space: %1$d"</string>
     <string name="people_in_space_label">"People in space"</string>
-    <string name="read_more_text">Read more</string>
-    <string name="offline_label">Offline</string>
+    <string name="read_more_text">"Read more"</string>
+    <string name="offline_label">"Offline"</string>
 </resources>

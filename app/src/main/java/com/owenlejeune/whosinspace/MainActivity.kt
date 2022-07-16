@@ -3,15 +3,21 @@ package com.owenlejeune.whosinspace
 import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.util.DisplayMetrics
+import android.util.Log
+import android.view.WindowInsets
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.*
-import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.*
+import androidx.compose.material.Card
+import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.Icon
+import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.MaterialTheme
@@ -19,21 +25,24 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import coil.compose.AsyncImage
+import com.google.android.gms.ads.*
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kieronquinn.monetcompat.app.MonetCompatActivity
@@ -53,6 +62,11 @@ class MainActivity : MonetCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (preferences.showAds) {
+            MobileAds.initialize(this) {}
+        }
+
         lifecycleScope.launchWhenCreated {
             monet.awaitMonetReady()
 
@@ -61,7 +75,7 @@ class MainActivity : MonetCompatActivity() {
             val astronautList = mutableStateOf<List<Astronaut>?>(null)
             if (hasInternet && shouldCrawlForData()) {
                 crawlForData(astronautList)
-            } else if (!BuildConfig.DEBUG) {
+            } else if (BuildConfig.DEBUG) {
                 val testJson = preferences.testJson
                 if (testJson.isNotEmpty()) {
                     val listOfAstronauts = object : TypeToken<ArrayList<Astronaut>>() {}.type
@@ -107,6 +121,8 @@ class MainActivity : MonetCompatActivity() {
                                 astronautData = astronautData
                             )
                         }
+
+                        AdvertView(modifier = Modifier.align(Alignment.BottomCenter))
                     }
                 }
             }
@@ -588,12 +604,75 @@ class MainActivity : MonetCompatActivity() {
                                 astronautData.value = null
                                 crawlForData(astronautData)
                             } else {
-                                Toast.makeText(context, R.string.offline_label, Toast.LENGTH_SHORT).show()
+                                Toast
+                                    .makeText(context, R.string.offline_label, Toast.LENGTH_SHORT)
+                                    .show()
                             }
                         }
                     ),
                 tint = MaterialTheme.colorScheme.onBackground
             )
         } 
+    }
+
+    @Composable
+    private fun AdvertView(modifier: Modifier = Modifier) {
+        if (preferences.showAds) {
+            if (LocalInspectionMode.current) {
+                Text(
+                    modifier = modifier
+                        .fillMaxWidth()
+                        .background(Color.Red)
+                        .padding(horizontal = 2.dp, vertical = 6.dp),
+                    textAlign = TextAlign.Center,
+                    color = Color.White,
+                    text = "Advert Here",
+                )
+            } else {
+                AndroidView(
+                    modifier = Modifier.fillMaxWidth(),
+                    factory = { context ->
+                        AdView(context).apply {
+                            adUnitId = BuildConfig.BannerAdUnitId
+                            setAdSize(AdSize.BANNER)
+                            loadBanner(this)
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+    private fun loadBanner(adView: AdView) {
+        val testDevices = listOf(AdRequest.DEVICE_ID_EMULATOR)
+
+        val requestConfiguration = RequestConfiguration.Builder()
+            .setTestDeviceIds(testDevices)
+            .build()
+
+        MobileAds.setRequestConfiguration(requestConfiguration)
+
+//        val adSize = getAdSize()
+//        adView.setAdSize(adSize)
+
+        val adRequest = AdRequest.Builder().build()
+        adView.loadAd(adRequest)
+    }
+
+    private fun getAdSize(): AdSize {
+        val widthPixels = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val windowMetrics = windowManager.currentWindowMetrics
+            val insets = windowMetrics.windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars())
+            windowMetrics.bounds.width() - insets.left - insets.right
+        } else {
+            val displayMetrics = DisplayMetrics()
+            windowManager.defaultDisplay.getMetrics(displayMetrics)
+            displayMetrics.widthPixels
+        }
+
+        val density = resources.displayMetrics.density
+        val adWidth = (widthPixels/density).toInt()
+
+        return AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(this, adWidth)
     }
 }
