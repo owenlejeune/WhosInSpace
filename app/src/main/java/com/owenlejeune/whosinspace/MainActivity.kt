@@ -46,6 +46,8 @@ import com.google.android.gms.ads.*
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kieronquinn.monetcompat.app.MonetCompatActivity
+import com.owenlejeune.whosinspace.api.model.NasaService
+import com.owenlejeune.whosinspace.api.model.PhotoOfTheDayResponse
 import com.owenlejeune.whosinspace.extensions.WindowSizeClass
 import com.owenlejeune.whosinspace.extensions.getOrientation
 import com.owenlejeune.whosinspace.extensions.isConnected
@@ -54,6 +56,9 @@ import com.owenlejeune.whosinspace.model.Astronaut
 import com.owenlejeune.whosinspace.preferences.AppPreferences
 import com.owenlejeune.whosinspace.ui.theme.WhosInSpaceTheme
 import com.owenlejeune.whosinspace.webcrawler.AstroCrawler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 
 class MainActivity : MonetCompatActivity() {
@@ -72,6 +77,16 @@ class MainActivity : MonetCompatActivity() {
 
             val hasInternet = isConnected()
 
+            val backdropImageModel = mutableStateOf<Any?>(null)
+
+            getPhotoOfTheDay { response ->
+                backdropImageModel.value = if (response == PhotoOfTheDayResponse.NonResponse || response.mediaType != PhotoOfTheDayResponse.PhotoMediaType.IMAGE) {
+                    R.drawable.space_background_2
+                } else {
+                    response.hdUrl
+                }
+            }
+
             val astronautList = mutableStateOf<List<Astronaut>?>(null)
             if (hasInternet && shouldCrawlForData()) {
                 crawlForData(astronautList)
@@ -85,7 +100,7 @@ class MainActivity : MonetCompatActivity() {
 
             installSplashScreen().apply {
                 setKeepOnScreenCondition {
-                    isConnected() && astronautList.value == null
+                    isConnected() && (astronautList.value == null || backdropImageModel.value == null)
                 }
             }
 
@@ -98,13 +113,14 @@ class MainActivity : MonetCompatActivity() {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(color = MaterialTheme.colorScheme.background)
+                            .background(color = MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         val bottomPadding = if (windowSizeClass == WindowSizeClass.Expanded) 0.dp else 12.dp
-                        Image(
-                            painter = painterResource(id = R.drawable.space_background_2),
+                        val model by remember { backdropImageModel }
+                        AsyncImage(
+                            model = model,
                             contentDescription = null,
-                            contentScale = ContentScale.FillBounds,
+                            contentScale = ContentScale.Crop,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(bottom = bottomPadding)
@@ -139,6 +155,24 @@ class MainActivity : MonetCompatActivity() {
         AstroCrawler().scrapeAstroData { astronauts ->
             astronautList.value = astronauts
             preferences.testJson = Gson().toJson(astronautList.value)
+        }
+    }
+
+    private fun getPhotoOfTheDay(callback: (PhotoOfTheDayResponse) -> Unit) {
+        if (isConnected()) {
+            CoroutineScope(Dispatchers.Main).launch {
+                val photoService = NasaService().createService()
+                val photoResponse = photoService.getAstronomyPhotoOfTheDay()
+                if (photoResponse.isSuccessful) {
+                    photoResponse.body()?.let {
+                        callback(it)
+                        return@launch
+                    }
+                }
+                callback(PhotoOfTheDayResponse.NonResponse)
+            }
+        } else {
+            callback(PhotoOfTheDayResponse.NonResponse)
         }
     }
 

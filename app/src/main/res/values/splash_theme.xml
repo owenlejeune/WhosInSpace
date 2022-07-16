@@ -2,8 +2,9 @@
 <resources>
 
     <style name="Theme.CustomSplashScreenTheme" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">#FEFBFF</item>
+        <item name="windowSplashScreenBackground">#E1E2EC</item>
         <item name="windowSplashScreenAnimationDuration">300</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_round</item>
         <item name="splashScreenIconSize">200dp</item>
         <item name="postSplashScreenTheme">@style/Theme.WhosInSpace</item>
     </style>

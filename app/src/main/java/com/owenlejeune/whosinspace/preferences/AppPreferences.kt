@@ -23,7 +23,7 @@ class AppPreferences(context: Context) {
 
     val showAds = true
     val testOffline = false
-    val useTestJson = BuildConfig.DEBUG && !testOffline
+    val useTestJson = false//BuildConfig.DEBUG && !testOffline
     var testJson: String
         get() = preferences.getString(TEST_JSON_KEY, "") ?: ""
         set(value) { preferences.put(TEST_JSON_KEY, value) }

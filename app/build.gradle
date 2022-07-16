@@ -27,9 +27,11 @@ android {
 
         buildConfigField "String", "AdMobId", localProperties['WhosInSpace_AdMob_App_Id']
         buildConfigField "String", "BannerAdUnitId", localProperties['WhosInSpace_Banner_Ad_Unit_Id']
+        buildConfigField "String", "NasaApiKey", localProperties['NASA_Api_Key']
 
         resValue "string", "ad_mob_id", localProperties['WhosInSpace_AdMob_App_Id']
         resValue "string", "banner_ad_unit_id", localProperties['WhosInSpace_Banner_Ad_Unit_Id']
+        resValue "string", "nasa_api_key", localProperties['NASA_Api_Key']
     }
 
     buildTypes {
