@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.scrollable
@@ -11,13 +12,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -34,6 +39,7 @@ import com.google.gson.reflect.TypeToken
 import com.kieronquinn.monetcompat.app.MonetCompatActivity
 import com.owenlejeune.whosinspace.extensions.WindowSizeClass
 import com.owenlejeune.whosinspace.extensions.getOrientation
+import com.owenlejeune.whosinspace.extensions.isConnected
 import com.owenlejeune.whosinspace.extensions.rememberWindowSizeClass
 import com.owenlejeune.whosinspace.model.Astronaut
 import com.owenlejeune.whosinspace.preferences.AppPreferences
@@ -50,21 +56,22 @@ class MainActivity : MonetCompatActivity() {
         lifecycleScope.launchWhenCreated {
             monet.awaitMonetReady()
 
+            val hasInternet = isConnected()
+
             val astronautList = mutableStateOf<List<Astronaut>?>(null)
-            if (shouldCrawlForData()) {
-                AstroCrawler().scrapeAstroData { astronauts ->
-                    astronautList.value = astronauts
-                    preferences.testJson = Gson().toJson(astronautList.value)
-                }
-            } else {
+            if (hasInternet && shouldCrawlForData()) {
+                crawlForData(astronautList)
+            } else if (!BuildConfig.DEBUG) {
                 val testJson = preferences.testJson
-                val listOfAstronauts = object : TypeToken<ArrayList<Astronaut>>() {}.type
-                astronautList.value = Gson().fromJson(testJson, listOfAstronauts)
+                if (testJson.isNotEmpty()) {
+                    val listOfAstronauts = object : TypeToken<ArrayList<Astronaut>>() {}.type
+                    astronautList.value = Gson().fromJson(testJson, listOfAstronauts)
+                }
             }
 
             installSplashScreen().apply {
                 setKeepOnScreenCondition {
-                    astronautList.value == null
+                    isConnected() && astronautList.value == null
                 }
             }
 
@@ -93,11 +100,11 @@ class MainActivity : MonetCompatActivity() {
 
                         if (windowSizeClass == WindowSizeClass.Expanded) {
                             DualColumnView(
-                                astronautData = astronautData.value
+                                astronautData = astronautData
                             )
                         } else {
                             SingleColumnView(
-                                astronautData = astronautData.value
+                                astronautData = astronautData
                             )
                         }
                     }
@@ -110,12 +117,21 @@ class MainActivity : MonetCompatActivity() {
         return !preferences.useTestJson || preferences.testJson.isEmpty()
     }
 
+    private fun crawlForData(
+        astronautList: MutableState<List<Astronaut>?>
+    ) {
+        AstroCrawler().scrapeAstroData { astronauts ->
+            astronautList.value = astronauts
+            preferences.testJson = Gson().toJson(astronautList.value)
+        }
+    }
+
     @Composable
     private fun SingleColumnView(
-        astronautData: List<Astronaut>?,
+        astronautData: MutableState<List<Astronaut>?>,
         useLargeCards: Boolean = false
     ) {
-        val scrollableModifier = if (astronautData == null) {
+        val scrollableModifier = if (astronautData.value == null) {
             Modifier
         } else {
             Modifier.verticalScroll(rememberScrollState())
@@ -127,7 +143,7 @@ class MainActivity : MonetCompatActivity() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             MainNumberCard(
-                number = astronautData?.size,
+                number = astronautData.value?.size,
                 modifier = Modifier.padding(top = 50.dp, bottom = 50.dp)
             )
 
@@ -137,9 +153,10 @@ class MainActivity : MonetCompatActivity() {
                     .background(color = MaterialTheme.colorScheme.background)
                     .fillMaxSize()
                     .padding(all = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (astronautData == null) {
+                if (astronautData.value == null && isConnected()) {
                     Spacer(modifier = Modifier.weight(1f))
                     CircularProgressIndicator(
                         modifier = Modifier
@@ -148,7 +165,10 @@ class MainActivity : MonetCompatActivity() {
                     )
                     Spacer(modifier = Modifier.weight(1f))
                 } else {
-                    astronautData.forEach { astronaut ->
+                    if (!isConnected()) {
+                        OfflineRow(astronautData = astronautData)
+                    }
+                    astronautData.value?.forEach { astronaut ->
                         if (useLargeCards) {
                             LargeAstronautCard(astronaut = astronaut)
                         } else {
@@ -162,7 +182,7 @@ class MainActivity : MonetCompatActivity() {
 
     @Composable
     private fun DualColumnView(
-        astronautData: List<Astronaut>?
+        astronautData: MutableState<List<Astronaut>?>
     ) {
         if (getOrientation() == Configuration.ORIENTATION_PORTRAIT) {
             SingleColumnView(
@@ -178,7 +198,7 @@ class MainActivity : MonetCompatActivity() {
                     modifier = Modifier
                         .weight(.6f)
                         .fillMaxHeight(),
-                    number = astronautData?.size
+                    number = astronautData.value?.size
                 )
 
                 DualPaneAstronautColumn(
@@ -209,7 +229,7 @@ class MainActivity : MonetCompatActivity() {
     @Composable
     private fun DualPaneAstronautColumn(
         modifier: Modifier,
-        astronautData: List<Astronaut>?
+        astronautData: MutableState<List<Astronaut>?>
     ) {
         Column(
             modifier = modifier
@@ -218,7 +238,7 @@ class MainActivity : MonetCompatActivity() {
                 .padding(all = 24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            if (astronautData == null) {
+            if (astronautData.value == null && isConnected()) {
                 Spacer(modifier = Modifier.weight(1f))
                 CircularProgressIndicator(
                     modifier = Modifier
@@ -227,7 +247,10 @@ class MainActivity : MonetCompatActivity() {
                 )
                 Spacer(modifier = Modifier.weight(1f))
             } else {
-                astronautData.forEach { astronaut ->
+                if (!isConnected()) {
+                    OfflineRow(astronautData = astronautData)
+                }
+                astronautData.value?.forEach { astronaut ->
                     LargeAstronautCard(
                         astronaut = astronaut
                     )
@@ -528,5 +551,49 @@ class MainActivity : MonetCompatActivity() {
                 tint = MaterialTheme.colorScheme.tertiary
             )
         }
+    }
+    
+    @Composable
+    private fun OfflineRow(
+        astronautData: MutableState<List<Astronaut>?>
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .semantics(mergeDescendants = true) {}
+                    .align(Alignment.TopCenter)
+            ) {
+                Text(
+                    text = stringResource(R.string.offline_label),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_cloud_off),
+                    tint = MaterialTheme.colorScheme.onBackground,
+                    contentDescription = null
+                )
+            }
+
+            val context = LocalContext.current
+            Icon(
+                imageVector = Icons.Filled.Refresh,
+                contentDescription = null,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .clickable(
+                        onClick = {
+                            if (isConnected()) {
+                                astronautData.value = emptyList()
+                                astronautData.value = null
+                                crawlForData(astronautData)
+                            } else {
+                                Toast.makeText(context, R.string.offline_label, Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    ),
+                tint = MaterialTheme.colorScheme.onBackground
+            )
+        } 
     }
 }

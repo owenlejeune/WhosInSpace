@@ -1,6 +1,10 @@
 package com.owenlejeune.whosinspace.extensions
 
 import android.app.Activity
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.geometry.Size
@@ -42,3 +46,31 @@ private fun getWindowSizeClass(windowDpSize: DpSize): WindowSizeClass = when {
 }
 
 fun Activity.getOrientation() = resources.configuration.orientation
+
+fun Activity.isConnected(): Boolean {
+    var result = false
+    val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        val networkCapabilities = cm.activeNetwork ?: return false
+        val activeNetwork = cm.getNetworkCapabilities(networkCapabilities) ?: return false
+        result = when {
+            activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
+            activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
+            activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> true
+            else -> false
+        }
+    } else {
+        cm.run {
+            cm.activeNetworkInfo?.run {
+                result = when (type) {
+                    ConnectivityManager.TYPE_WIFI -> true
+                    ConnectivityManager.TYPE_MOBILE -> true
+                    ConnectivityManager.TYPE_ETHERNET -> true
+                    else -> false
+                }
+            }
+        }
+    }
+
+    return result
+}

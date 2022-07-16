@@ -2,6 +2,7 @@ package com.owenlejeune.whosinspace.preferences
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.owenlejeune.whosinspace.BuildConfig
 
 class AppPreferences(context: Context) {
 
@@ -18,7 +19,8 @@ class AppPreferences(context: Context) {
         get() = preferences.getBoolean(USE_MONET_COLORS_KEY, false)
         set(value) { preferences.put(USE_MONET_COLORS_KEY, value) }
 
-    val useTestJson = false
+    val testOffline = false
+    val useTestJson = BuildConfig.DEBUG && !testOffline
     var testJson: String
         get() = preferences.getString(TEST_JSON_KEY, "") ?: ""
         set(value) { preferences.put(TEST_JSON_KEY, value) }
