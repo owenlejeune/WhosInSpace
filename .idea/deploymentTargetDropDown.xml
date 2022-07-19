@@ -7,19 +7,19 @@
         <deviceKey>
           <Key>
             <type value="VIRTUAL_DEVICE_PATH" />
-            <value value="$USER_HOME$/.android/avd/Pixel_C_API_31.avd" />
+            <value value="$USER_HOME$/.android/avd/Nexus_7_API_31.avd" />
           </Key>
         </deviceKey>
       </Target>
     </targetSelectedWithDropDown>
-    <timeTargetWasSelectedWithDropDown value="2022-07-16T22:23:58.524238Z" />
+    <timeTargetWasSelectedWithDropDown value="2022-07-19T14:58:17.270021Z" />
     <targetsSelectedWithDialog>
       <Target>
         <type value="QUICK_BOOT_TARGET" />
         <deviceKey>
           <Key>
             <type value="VIRTUAL_DEVICE_PATH" />
-            <value value="$USER_HOME$/.android/avd/Pixel_3a_API_31.avd" />
+            <value value="$USER_HOME$/.android/avd/Nexus_7_API_31.avd" />
           </Key>
         </deviceKey>
       </Target>
