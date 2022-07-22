@@ -1,11 +1,15 @@
 package com.owenlejeune.whosinspace
 
+import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.WindowInsets
 import android.widget.Toast
 import androidx.activity.compose.setContent
@@ -61,6 +65,10 @@ import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 
 class MainActivity : MonetCompatActivity() {
+
+    companion object {
+        const val TAG = "MainActivity"
+    }
 
     private val preferences: AppPreferences by inject()
 
@@ -126,18 +134,24 @@ class MainActivity : MonetCompatActivity() {
                         )
 
                         val astronautData = remember { astronautList }
+                        val isAdLoaded = remember { mutableStateOf(false) }
 
                         if (windowSizeClass == WindowSizeClass.Expanded) {
                             DualColumnView(
-                                astronautData = astronautData
+                                astronautData = astronautData,
+                                isAdLoaded = isAdLoaded
                             )
                         } else {
                             SingleColumnView(
-                                astronautData = astronautData
+                                astronautData = astronautData,
+                                isAdLoaded = isAdLoaded
                             )
                         }
 
-                        AdvertView(modifier = Modifier.align(Alignment.BottomCenter))
+                        AdvertView(
+                            modifier = Modifier.align(Alignment.BottomCenter),
+                            isAdLoaded = isAdLoaded
+                        )
                     }
                 }
             }
@@ -178,7 +192,8 @@ class MainActivity : MonetCompatActivity() {
     @Composable
     private fun SingleColumnView(
         astronautData: MutableState<List<Astronaut>?>,
-        useLargeCards: Boolean = false
+        useLargeCards: Boolean = false,
+        isAdLoaded: MutableState<Boolean>
     ) {
         val scrollableModifier = if (astronautData.value == null) {
             Modifier
@@ -225,18 +240,21 @@ class MainActivity : MonetCompatActivity() {
                         }
                     }
                 }
+                PrivacyPolicyView(isAdLoaded = isAdLoaded)
             }
         }
     }
 
     @Composable
     private fun DualColumnView(
-        astronautData: MutableState<List<Astronaut>?>
+        astronautData: MutableState<List<Astronaut>?>,
+        isAdLoaded: MutableState<Boolean>
     ) {
         if (getOrientation() == Configuration.ORIENTATION_PORTRAIT) {
             SingleColumnView(
                 astronautData = astronautData,
-                useLargeCards = true
+                useLargeCards = true,
+                isAdLoaded = isAdLoaded
             )
         } else {
             Row(
@@ -254,7 +272,8 @@ class MainActivity : MonetCompatActivity() {
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
-                    astronautData = astronautData
+                    astronautData = astronautData,
+                    isAdLoaded = isAdLoaded
                 )
             }
         }
@@ -278,7 +297,8 @@ class MainActivity : MonetCompatActivity() {
     @Composable
     private fun DualPaneAstronautColumn(
         modifier: Modifier,
-        astronautData: MutableState<List<Astronaut>?>
+        astronautData: MutableState<List<Astronaut>?>,
+        isAdLoaded: MutableState<Boolean>
     ) {
         Column(
             modifier = modifier
@@ -304,6 +324,10 @@ class MainActivity : MonetCompatActivity() {
                         astronaut = astronaut
                     )
                 }
+                PrivacyPolicyView(
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    isAdLoaded = isAdLoaded
+                )
             }
         }
     }
@@ -649,7 +673,10 @@ class MainActivity : MonetCompatActivity() {
     }
 
     @Composable
-    private fun AdvertView(modifier: Modifier = Modifier) {
+    private fun AdvertView(
+        modifier: Modifier = Modifier,
+        isAdLoaded: MutableState<Boolean>
+    ) {
         if (preferences.showAds) {
             if (LocalInspectionMode.current) {
                 Text(
@@ -669,10 +696,42 @@ class MainActivity : MonetCompatActivity() {
                             adUnitId = BuildConfig.BannerAdUnitId
                             setAdSize(AdSize.BANNER)
                             loadBanner(this)
+                            adListener = object : AdListener() {
+                                override fun onAdFailedToLoad(p0: LoadAdError) {
+                                    super.onAdFailedToLoad(p0)
+                                    isAdLoaded.value = false
+                                }
+
+                                override fun onAdLoaded() {
+                                    super.onAdLoaded()
+                                    isAdLoaded.value = true
+                                }
+                            }
                         }
                     }
                 )
             }
+        }
+    }
+
+    @Composable
+    private fun ColumnScope.PrivacyPolicyView(
+        modifier: Modifier = Modifier,
+        isAdLoaded: MutableState<Boolean>
+    ) {
+        Spacer(modifier = Modifier.weight(1f))
+        Text(
+            text = stringResource(id = R.string.privacy_policy_label),
+            style = TextStyle(textDecoration = TextDecoration.Underline),
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = modifier.clickable(
+                onClick = {
+                    openPrivacyPolicyLink()
+                }
+            )
+        )
+        if (isAdLoaded.value) {
+            Spacer(modifier = Modifier.height(AdSize.BANNER.height.dp))
         }
     }
 
@@ -685,27 +744,29 @@ class MainActivity : MonetCompatActivity() {
 
         MobileAds.setRequestConfiguration(requestConfiguration)
 
-//        val adSize = getAdSize()
-//        adView.setAdSize(adSize)
-
         val adRequest = AdRequest.Builder().build()
         adView.loadAd(adRequest)
     }
 
-    private fun getAdSize(): AdSize {
-        val widthPixels = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val windowMetrics = windowManager.currentWindowMetrics
-            val insets = windowMetrics.windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars())
-            windowMetrics.bounds.width() - insets.left - insets.right
-        } else {
-            val displayMetrics = DisplayMetrics()
-            windowManager.defaultDisplay.getMetrics(displayMetrics)
-            displayMetrics.widthPixels
+    private fun openPrivacyPolicyLink() {
+        val link = getString(R.string.privacy_policy_link)
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
+        // If the user has a default browser set, open the intent there
+        // Prevents the system from asking the user to open the link in the ArriveCAN app
+        try {
+            getDefaultBrowserPackage(this)?.let { browserPackage ->
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                intent.setPackage(browserPackage)
+            }
+            startActivity(intent)
+        } catch(exception: ActivityNotFoundException) {
+            Log.e(TAG, "Exception: browser possibly not found")
         }
+    }
 
-        val density = resources.displayMetrics.density
-        val adWidth = (widthPixels/density).toInt()
-
-        return AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(this, adWidth)
+    fun getDefaultBrowserPackage(context: Context): String? {
+        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("http://"))
+        val resolveInfo = context.packageManager.resolveActivity(browserIntent, PackageManager.MATCH_DEFAULT_ONLY)
+        return resolveInfo?.activityInfo?.packageName
     }
 }

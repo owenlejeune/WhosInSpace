@@ -6,4 +6,6 @@
     <string name="people_in_space_label">"People in space"</string>
     <string name="read_more_text">"Read more"</string>
     <string name="offline_label">"Offline"</string>
+    <string name="privacy_policy_label">"Privacy Policy"</string>
+    <string name="privacy_policy_link">"https://pages.flycricket.io/who-s-in-space-0/privacy.html"</string>
 </resources>
