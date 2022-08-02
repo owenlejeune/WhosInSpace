@@ -94,9 +94,12 @@ class MainActivity : MonetCompatActivity() {
                 }
             }
 
+            var errorOccurred = false
             val astronautList = mutableStateOf<List<Astronaut>?>(null)
             if (hasInternet && shouldCrawlForData()) {
-                crawlForData(astronautList)
+                crawlForData(astronautList) {
+                    errorOccurred = true
+                }
             } else if (BuildConfig.DEBUG) {
                 val testJson = preferences.testJson
                 if (testJson.isNotEmpty()) {
@@ -107,7 +110,10 @@ class MainActivity : MonetCompatActivity() {
 
             installSplashScreen().apply {
                 setKeepOnScreenCondition {
-                    isConnected() && (astronautList.value == null || backdropImageModel.value == null)
+                    (
+                        isConnected() &&
+                            (astronautList.value == null || backdropImageModel.value == null)
+                    ) || errorOccurred
                 }
             }
 
@@ -115,6 +121,12 @@ class MainActivity : MonetCompatActivity() {
 
             setContent {
                 WhosInSpaceTheme(monetCompat = monet) {
+                    val context = LocalContext.current
+
+                    val rememberErrorOccurred = remember { errorOccurred }
+                    if (rememberErrorOccurred) {
+                        Toast.makeText(context, stringResource(id = R.string.loading_error_message), Toast.LENGTH_SHORT).show()
+                    }
                     val windowSizeClass = rememberWindowSizeClass()
 
                     Box(
@@ -163,11 +175,16 @@ class MainActivity : MonetCompatActivity() {
     }
 
     private fun crawlForData(
-        astronautList: MutableState<List<Astronaut>?>
+        astronautList: MutableState<List<Astronaut>?>,
+        onError: () -> Unit
     ) {
-        AstroCrawler().scrapeAstroData { astronauts ->
-            astronautList.value = astronauts
-            preferences.testJson = Gson().toJson(astronautList.value)
+        try {
+            AstroCrawler().scrapeAstroData { astronauts ->
+                astronautList.value = astronauts
+                preferences.testJson = Gson().toJson(astronautList.value)
+            }
+        } catch (e: Exception) {
+            onError()
         }
     }
 
@@ -659,7 +676,9 @@ class MainActivity : MonetCompatActivity() {
                             if (isConnected()) {
                                 astronautData.value = emptyList()
                                 astronautData.value = null
-                                crawlForData(astronautData)
+                                crawlForData(astronautData) {
+                                    Toast.makeText(context, context.getString(R.string.loading_error_message), Toast.LENGTH_SHORT).show()
+                                }
                             } else {
                                 Toast
                                     .makeText(context, R.string.offline_label, Toast.LENGTH_SHORT)
@@ -690,7 +709,7 @@ class MainActivity : MonetCompatActivity() {
                 )
             } else {
                 AndroidView(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = modifier.fillMaxWidth(),
                     factory = { context ->
                         AdView(context).apply {
                             adUnitId = BuildConfig.BannerAdUnitId
@@ -715,23 +734,26 @@ class MainActivity : MonetCompatActivity() {
     }
 
     @Composable
-    private fun ColumnScope.PrivacyPolicyView(
+    private fun PrivacyPolicyView(
         modifier: Modifier = Modifier,
         isAdLoaded: MutableState<Boolean>
     ) {
-        Spacer(modifier = Modifier.weight(1f))
-        Text(
-            text = stringResource(id = R.string.privacy_policy_label),
-            style = TextStyle(textDecoration = TextDecoration.Underline),
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = modifier.clickable(
-                onClick = {
-                    openPrivacyPolicyLink()
-                }
+        Column(
+            modifier = modifier
+        ) {
+            Text(
+                text = stringResource(id = R.string.privacy_policy_label),
+                style = TextStyle(textDecoration = TextDecoration.Underline),
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = modifier.clickable(
+                    onClick = {
+                        openPrivacyPolicyLink()
+                    }
+                )
             )
-        )
-        if (isAdLoaded.value) {
-            Spacer(modifier = Modifier.height(AdSize.BANNER.height.dp))
+            if (isAdLoaded.value) {
+                Spacer(modifier = Modifier.height(AdSize.BANNER.height.dp))
+            }
         }
     }
 
