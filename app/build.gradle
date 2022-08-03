@@ -70,8 +70,8 @@ dependencies {
     implementation "androidx.compose.ui:ui:$composeVersion"
     implementation "androidx.compose.material:material:$composeVersion"
     implementation "androidx.compose.ui:ui-tooling-preview:$composeVersion"
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.0'
-    implementation 'androidx.activity:activity-compose:1.5.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
+    implementation 'androidx.activity:activity-compose:1.5.1'
 
     implementation 'org.jsoup:jsoup:1.15.2'
 
@@ -79,7 +79,7 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
     implementation 'com.google.code.gson:gson:2.9.0'
 
-    implementation "androidx.compose.material3:material3:1.0.0-alpha14"
+    implementation "androidx.compose.material3:material3:1.0.0-alpha15"
     implementation "com.google.accompanist:accompanist-systemuicontroller:0.24.10-beta"
 
     implementation 'androidx.palette:palette-ktx:1.0.0'
@@ -94,9 +94,11 @@ dependencies {
 
     implementation "io.coil-kt:coil-compose:2.1.0"
 
-    implementation 'androidx.core:core-splashscreen:1.0.0-rc01'
+    implementation 'androidx.core:core-splashscreen:1.0.0'
 
     implementation 'com.google.android.gms:play-services-ads:21.1.0'
+
+    implementation "com.google.accompanist:accompanist-swiperefresh:0.26.0-alpha"
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'

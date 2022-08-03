@@ -5,6 +5,7 @@ import androidx.compose.material.Colors
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.kieronquinn.monetcompat.core.MonetCompat
 import com.owenlejeune.whosinspace.preferences.AppPreferences
@@ -115,7 +116,8 @@ fun WhosInSpaceTheme(
             shapes = Shapes,
             content = {
                 val systemUiController = rememberSystemUiController()
-                systemUiController.setSystemBarsColor(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
+//                systemUiController.setSystemBarsColor(color = androidx.compose.material3.MaterialTheme.colorScheme.background)
+                systemUiController.setSystemBarsColor(color = Color.Transparent, darkIcons = false)
 
                 content()
             }

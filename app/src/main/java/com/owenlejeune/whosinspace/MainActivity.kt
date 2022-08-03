@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.DisplayMetrics
 import android.util.Log
+import android.view.View
 import android.view.WindowInsets
 import android.widget.Toast
 import androidx.activity.compose.setContent
@@ -27,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -43,8 +45,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import coil.compose.AsyncImage
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.google.android.gms.ads.*
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -123,47 +128,65 @@ class MainActivity : MonetCompatActivity() {
                 WhosInSpaceTheme(monetCompat = monet) {
                     val context = LocalContext.current
 
-                    val rememberErrorOccurred = remember { errorOccurred }
+                    var rememberErrorOccurred = remember { errorOccurred }
                     if (rememberErrorOccurred) {
+                        rememberErrorOccurred = false
                         Toast.makeText(context, stringResource(id = R.string.loading_error_message), Toast.LENGTH_SHORT).show()
                     }
                     val windowSizeClass = rememberWindowSizeClass()
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(color = MaterialTheme.colorScheme.surfaceVariant)
+                    val isRefreshing = rememberSwipeRefreshState(isRefreshing = false)
+
+                    SwipeRefresh(
+                        state = isRefreshing,
+                        onRefresh = {
+                            isRefreshing.isRefreshing = true
+                            crawlForData(
+                                astronautList = astronautList,
+                                onError = {
+                                    rememberErrorOccurred = true
+                                    isRefreshing.isRefreshing = false
+                                },
+                                onSuccess = {
+                                    isRefreshing.isRefreshing = false
+                                }
+                            )
+                        }
                     ) {
-                        val bottomPadding = if (windowSizeClass == WindowSizeClass.Expanded) 0.dp else 12.dp
-                        val model by remember { backdropImageModel }
-                        AsyncImage(
-                            model = model,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
+                        Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(bottom = bottomPadding)
-                        )
-
-                        val astronautData = remember { astronautList }
-                        val isAdLoaded = remember { mutableStateOf(false) }
-
-                        if (windowSizeClass == WindowSizeClass.Expanded) {
-                            DualColumnView(
-                                astronautData = astronautData,
-                                isAdLoaded = isAdLoaded
+                                .background(color = MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            val model by remember { backdropImageModel }
+                            AsyncImage(
+                                model = model,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
                             )
-                        } else {
-                            SingleColumnView(
-                                astronautData = astronautData,
+
+                            val astronautData = remember { astronautList }
+                            val isAdLoaded = remember { mutableStateOf(false) }
+
+                            if (windowSizeClass == WindowSizeClass.Expanded) {
+                                DualColumnView(
+                                    astronautData = astronautData,
+                                    isAdLoaded = isAdLoaded
+                                )
+                            } else {
+                                SingleColumnView(
+                                    astronautData = astronautData,
+                                    isAdLoaded = isAdLoaded
+                                )
+                            }
+
+                            AdvertView(
+                                modifier = Modifier.align(Alignment.BottomCenter),
                                 isAdLoaded = isAdLoaded
                             )
                         }
-
-                        AdvertView(
-                            modifier = Modifier.align(Alignment.BottomCenter),
-                            isAdLoaded = isAdLoaded
-                        )
                     }
                 }
             }
@@ -176,12 +199,14 @@ class MainActivity : MonetCompatActivity() {
 
     private fun crawlForData(
         astronautList: MutableState<List<Astronaut>?>,
-        onError: () -> Unit
+        onSuccess: () -> Unit = {},
+        onError: () -> Unit = {}
     ) {
         try {
             AstroCrawler().scrapeAstroData { astronauts ->
                 astronautList.value = astronauts
                 preferences.testJson = Gson().toJson(astronautList.value)
+                onSuccess()
             }
         } catch (e: Exception) {
             onError()
@@ -231,7 +256,7 @@ class MainActivity : MonetCompatActivity() {
             Column(
                 modifier = Modifier
                     .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
-                    .background(color = MaterialTheme.colorScheme.background)
+                    .background(color = MaterialTheme.colorScheme.background.copy(alpha = 0.9f))
                     .fillMaxSize()
                     .padding(all = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
@@ -320,7 +345,7 @@ class MainActivity : MonetCompatActivity() {
         Column(
             modifier = modifier
                 .verticalScroll(rememberScrollState())
-                .background(color = MaterialTheme.colorScheme.background)
+                .background(color = MaterialTheme.colorScheme.background.copy(alpha = 0.9f))
                 .padding(all = 24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
@@ -359,12 +384,12 @@ class MainActivity : MonetCompatActivity() {
                 .width(width = 200.dp)
                 .wrapContentHeight(),
             shape = RoundedCornerShape(20.dp),
+            backgroundColor = MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
             elevation = 20.dp
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.background(color = MaterialTheme.colorScheme.background)
+                verticalArrangement = Arrangement.Center
             ) {
                 Text(
                     text = "${number ?: "?"}",
@@ -401,7 +426,9 @@ class MainActivity : MonetCompatActivity() {
             backgroundColor = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant,
             shape = RoundedCornerShape(20.dp)
         ) {
-            Column {
+            Column(
+                modifier = Modifier.clip(RoundedCornerShape(20.dp))
+            ) {
                 Row(
                     modifier = Modifier.clip(RoundedCornerShape(20.dp))
                 ) {
@@ -677,7 +704,13 @@ class MainActivity : MonetCompatActivity() {
                                 astronautData.value = emptyList()
                                 astronautData.value = null
                                 crawlForData(astronautData) {
-                                    Toast.makeText(context, context.getString(R.string.loading_error_message), Toast.LENGTH_SHORT).show()
+                                    Toast
+                                        .makeText(
+                                            context,
+                                            context.getString(R.string.loading_error_message),
+                                            Toast.LENGTH_SHORT
+                                        )
+                                        .show()
                                 }
                             } else {
                                 Toast
